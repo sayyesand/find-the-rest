@@ -6,6 +6,8 @@ from pathlib import Path
 
 from fastapi import FastAPI, File, UploadFile, HTTPException, Form, Header, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from dotenv import load_dotenv
 
@@ -38,6 +40,10 @@ from datetime import datetime, timezone
 
 load_dotenv()
 app = FastAPI(title="Find the Rest API", version="0.55.0")
+WEB_DIR = Path(__file__).resolve().parent.parent / "web"
+
+if WEB_DIR.is_dir():
+    app.mount("/assets", StaticFiles(directory=str(WEB_DIR)), name="web-assets")
 
 _cors_origins = [x.strip() for x in os.getenv("FINDREST_CORS_ORIGINS", "").split(",") if x.strip()]
 if _cors_origins:
@@ -54,6 +60,17 @@ if _trusted_hosts:
 
 MAX_MEDIA_BYTES = 60 * 1024 * 1024
 ALLOWED_MEDIA_TYPES = {"video/mp4", "video/quicktime", "video/x-m4v", "image/jpeg", "image/png", "image/webp", "image/heic", "image/heif", "application/octet-stream"}
+
+@app.get("/", include_in_schema=False)
+async def web_home():
+    index = WEB_DIR / "index.html"
+    if not index.is_file():
+        raise HTTPException(status_code=404, detail="Web app is not installed")
+    return FileResponse(index)
+
+@app.get("/manifest.webmanifest", include_in_schema=False)
+async def web_manifest():
+    return FileResponse(WEB_DIR / "manifest.webmanifest", media_type="application/manifest+json")
 
 def require_api_key(x_findtherest_key: str | None = Header(default=None)) -> None:
     expected = os.getenv("FIND_THE_REST_API_KEY", "").strip()
