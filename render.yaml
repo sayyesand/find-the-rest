@@ -1,0 +1,35 @@
+services:
+  - type: web
+    name: find-the-rest-api
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    healthCheckPath: /health
+    envVars:
+      - key: YOUTUBE_API_KEY
+        sync: false
+      - key: FIND_THE_REST_API_KEY
+        generateValue: true
+      - key: ENABLE_LOCAL_TRANSCRIPTION
+        value: "0"
+
+  - type: cron
+    name: find-the-rest-watch-scheduler
+    runtime: python
+    rootDir: backend
+    schedule: "5 * * * *"
+    buildCommand: python -m compileall scripts/check_due_watches.py
+    startCommand: python scripts/check_due_watches.py
+    envVars:
+      - key: FINDREST_SCHEDULER_HOSTPORT
+        fromService:
+          name: find-the-rest-api
+          type: web
+          property: hostport
+      - key: FIND_THE_REST_API_KEY
+        fromService:
+          name: find-the-rest-api
+          type: web
+          envVarKey: FIND_THE_REST_API_KEY
+      - key: FINDREST_SCHEDULER_TIMEOUT_SECONDS
+        value: "120"

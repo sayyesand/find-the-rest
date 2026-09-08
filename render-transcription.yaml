@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: find-the-rest-api-ai
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile.ai
+    dockerContext: ./backend
+    healthCheckPath: /health
+    envVars:
+      - key: YOUTUBE_API_KEY
+        sync: false
+      - key: BRAVE_SEARCH_API_KEY
+        sync: false
+      - key: FIND_THE_REST_API_KEY
+        generateValue: true
+      - key: ENABLE_LOCAL_TRANSCRIPTION
+        value: "1"
+      - key: FINDREST_WHISPER_MODEL
+        value: "tiny.en"
+      - key: FIND_THE_REST_MAX_SEARCHES
+        value: "7"

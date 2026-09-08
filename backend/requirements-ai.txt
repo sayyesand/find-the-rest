@@ -1,0 +1,3 @@
+# Optional local speech transcription. Install only when you want Find the Rest
+# to transcribe permitted/user-supplied media locally on the server.
+faster-whisper==1.1.1
