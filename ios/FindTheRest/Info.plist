@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+<key>CFBundleDisplayName</key><string>Find the Rest</string>
+<key>CFBundleURLTypes</key><array><dict><key>CFBundleURLName</key><string>app.findtherest</string><key>CFBundleURLSchemes</key><array><string>findtherest</string></array><key>NSSpeechRecognitionUsageDescription</key><string>Find the Rest can transcribe audio from a video you choose so it can search using story clues without uploading the video.</string>
+</dict></array>
+<key>UILaunchScreen</key><dict/>
+<key>NSSpeechRecognitionUsageDescription</key><string>Find the Rest can transcribe audio from a video you choose so it can search using story clues without uploading the video.</string>
+</dict></plist>
