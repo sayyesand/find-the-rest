@@ -75,7 +75,7 @@ h1 em { color: var(--coral); font-family: Georgia, serif; font-weight: 500; }
 label { display: block; margin: 0 0 9px; color: #dce1ef; font-size: .82rem; font-weight: 700; }
 label:not(:first-of-type) { margin-top: 20px; }
 .url-row { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
-input, select {
+input, select, textarea {
   width: 100%;
   min-height: 53px;
   border: 1px solid rgba(255,255,255,.13);
@@ -87,7 +87,9 @@ input, select {
 }
 input { padding: 0 15px; min-width: 0; }
 select { padding: 0 42px 0 15px; }
-input:focus, select:focus { border-color: var(--violet); box-shadow: 0 0 0 3px rgba(146,119,255,.18); }
+textarea { min-height: 108px; padding: 14px 15px; resize: vertical; line-height: 1.45; }
+input:focus, select:focus, textarea:focus { border-color: var(--violet); box-shadow: 0 0 0 3px rgba(146,119,255,.18); }
+.field-help { margin: 8px 2px 0; color: #8892ac; font-size: .74rem; line-height: 1.45; }
 .paste { border: 0; border-radius: 14px; padding: 0 15px; color: var(--cyan); background: rgba(97,216,238,.1); font-weight: 700; }
 
 .primary, .secondary {

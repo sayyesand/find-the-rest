@@ -2,6 +2,7 @@ const $ = (id) => document.getElementById(id);
 
 const ui = {
   url: $("video-url"), intent: $("intent"), paste: $("paste-button"), search: $("search-button"),
+  clueGroup: $("social-clue-group"), clue: $("social-clue"),
   label: document.querySelector(".button-label"), note: $("search-note"), result: $("result"),
   resultTitle: $("result-title"), resultMessage: $("result-message"), kicker: $("result-kicker"),
   confidenceRow: $("confidence-row"), confidenceNumber: $("confidence-number"),
@@ -25,6 +26,18 @@ function validPublicURL(raw) {
   } catch { return null; }
 }
 
+function needsSocialClue(url) {
+  try {
+    const host = new URL(url).hostname.toLowerCase();
+    return host.includes("instagram.com") || host.includes("facebook.com") || host === "fb.watch";
+  } catch { return false; }
+}
+
+function updateClueVisibility() {
+  const show = needsSocialClue(ui.url.value);
+  ui.clueGroup.hidden = !show;
+}
+
 async function checkService() {
   try {
     const [health, capabilities] = await Promise.all([
@@ -45,6 +58,7 @@ function setBusy(busy) {
   ui.search.disabled = busy;
   ui.url.disabled = busy;
   ui.intent.disabled = busy;
+  ui.clue.disabled = busy;
   ui.label.textContent = busy ? "Searching public sources…" : "Find the Rest";
   ui.note.textContent = busy
     ? "The free service may need up to a minute to wake. Keep this page open."
@@ -107,15 +121,26 @@ async function search() {
     ui.note.textContent = "Paste a complete public link beginning with https://";
     return;
   }
+  const social = needsSocialClue(url);
+  const clue = ui.clue.value.trim();
+  if (social && clue.length < 8) {
+    ui.clueGroup.hidden = false;
+    ui.clue.focus();
+    ui.note.textContent = "Paste the post caption or briefly describe the video so I know what to search for.";
+    return;
+  }
   setBusy(true);
   ui.result.hidden = true;
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 120000);
   try {
-    const response = await fetch("/v1/analyze", {
+    const endpoint = social ? "/v1/analyze-clues" : "/v1/analyze";
+    const requestBody = { url, scope: "web", intent: ui.intent.value };
+    if (social) requestBody.visible_text = clue;
+    const response = await fetch(endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ url, scope: "web", intent: ui.intent.value }),
+      body: JSON.stringify(requestBody),
       signal: controller.signal
     });
     const data = await response.json().catch(() => ({}));
@@ -134,9 +159,11 @@ async function search() {
 
 ui.search.addEventListener("click", search);
 ui.url.addEventListener("keydown", (event) => { if (event.key === "Enter") search(); });
+ui.url.addEventListener("input", updateClueVisibility);
 ui.paste.addEventListener("click", async () => {
   try {
     ui.url.value = await navigator.clipboard.readText();
+    updateClueVisibility();
     ui.url.focus();
   } catch {
     ui.url.focus();
@@ -146,6 +173,8 @@ ui.paste.addEventListener("click", async () => {
 ui.again.addEventListener("click", () => {
   ui.result.hidden = true;
   ui.url.value = "";
+  ui.clue.value = "";
+  updateClueVisibility();
   ui.url.focus();
   window.scrollTo({ top: 0, behavior: "smooth" });
 });

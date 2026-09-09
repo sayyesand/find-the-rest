@@ -223,6 +223,28 @@ async def analyze(req: AnalyzeRequest, *, source_transcript: str | None = None, 
         notes.append("Direct creator-gallery search remains provider/API dependent; restricted or private content is never bypassed.")
 
     fingerprint_description = " ".join(x for x in [source_description, source_visible_text or ""] if x).strip()
+    source_identity_text = source_title or source_visible_text or source_description
+
+    # Facebook and Instagram commonly expose little or no public page metadata.
+    # A user-supplied caption/clue can still seed a public YouTube search without
+    # logging in, scraping private content, or requiring another paid provider.
+    if platform != "youtube" and os.getenv("YOUTUBE_API_KEY", "").strip():
+        clue_text = " ".join(
+            x for x in [source_title, source_description, source_visible_text or "", source_transcript or ""] if x
+        ).strip()
+        query = normalize_terms(source_identity_text, clue_text)
+        if query:
+            candidates.extend(await search_candidates(
+                query,
+                source_title=source_identity_text,
+                source_description=clue_text,
+                source_creator=source_creator,
+                source_published_at=source_published,
+                channel_id=None,
+                limit=18,
+            ))
+            notes.append("Used the supplied public caption or story clue to search YouTube for matching continuations.")
+
     story_fp = fingerprint_story(source_title, fingerprint_description, source_transcript)
     fingerprint_queries = build_fingerprint_queries(story_fp, source_creator)
     ending_fp = ending_fingerprint(source_transcript, f"{source_title} {source_description}")
@@ -333,7 +355,7 @@ async def analyze(req: AnalyzeRequest, *, source_transcript: str | None = None, 
         clears_numbered_threshold = (
             profile.calibrated >= MIN_NUMBERED_CONTINUATION_CONFIDENCE
             and consecutive_numbered_continuation(
-                source_title=source_title,
+                source_title=source_identity_text,
                 source_creator=source_creator,
                 candidate=candidate,
             )
@@ -341,7 +363,7 @@ async def analyze(req: AnalyzeRequest, *, source_transcript: str | None = None, 
         if not (clears_general_threshold or clears_numbered_threshold):
             continue
         if req.intent == "continue_story" and not credible_continuation(
-            source_title=source_title,
+            source_title=source_identity_text,
             source_creator=source_creator,
             candidate=candidate,
         ):
