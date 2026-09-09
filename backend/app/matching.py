@@ -82,6 +82,9 @@ def credible_continuation(
 
     source_part = _part_number(source_title)
     candidate_part = _part_number(candidate.title)
+    if source_part is not None and candidate_part is not None:
+        return candidate_part > source_part and bool(shared_topic_terms)
+
     numbered_follow_up = (
         candidate_part is not None
         and (source_part is None or candidate_part > source_part)

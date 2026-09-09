@@ -64,3 +64,8 @@ def test_does_not_accept_previous_part_as_the_next_part():
         source_creator="THE 150 TALES",
         candidate=result,
     )
+    assert not credible_continuation(
+        source_title="Garuda: The Brave Son (Part 3)",
+        source_creator="THE 150 TALES",
+        candidate=result,
+    )
