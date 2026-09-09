@@ -16,11 +16,12 @@ from .outcome import classify_outcome
 from .provenance import build_provenance_graph
 from .intent import rank_for_intent
 from .confidence import annotate_confidence, confidence_profile
-from .matching import credible_continuation
+from .matching import credible_continuation, consecutive_numbered_continuation
 from .adapters.youtube import extract_video_id, get_video_metadata, normalize_terms, search_candidates, iso8601_duration_seconds
 from .adapters.open_web import search_open_web
 
 MIN_MATCH_CONFIDENCE = 0.44
+MIN_NUMBERED_CONTINUATION_CONFIDENCE = 0.38
 
 def _query_from_meta(meta: dict) -> str:
     title = meta.get("title") or ""
@@ -325,20 +326,33 @@ async def analyze(req: AnalyzeRequest, *, source_transcript: str | None = None, 
             notes.append("Chain still has unresolved gap(s): " + ", ".join(f"Part {p}" for p in still_missing) + ".")
 
     top_profile = confidence_profile(candidates[0]) if candidates else None
-    best = candidates[0] if candidates and top_profile and top_profile.calibrated >= MIN_MATCH_CONFIDENCE else None
-    if (
-        best is not None
-        and req.intent == "continue_story"
-        and not credible_continuation(
+    best = None
+    for candidate in candidates:
+        profile = confidence_profile(candidate)
+        clears_general_threshold = profile.calibrated >= MIN_MATCH_CONFIDENCE
+        clears_numbered_threshold = (
+            profile.calibrated >= MIN_NUMBERED_CONTINUATION_CONFIDENCE
+            and consecutive_numbered_continuation(
+                source_title=source_title,
+                source_creator=source_creator,
+                candidate=candidate,
+            )
+        )
+        if not (clears_general_threshold or clears_numbered_threshold):
+            continue
+        if req.intent == "continue_story" and not credible_continuation(
             source_title=source_title,
             source_creator=source_creator,
-            candidate=best,
-        )
-    ):
+            candidate=candidate,
+        ):
+            continue
+        best = candidate
+        break
+
+    if candidates and best is None and req.intent == "continue_story":
         notes.append(
-            "The top result was related, but rejected as a continuation because it lacked shared story identity."
+            "Related results were rejected as continuations because they lacked shared story identity or a credible next-part sequence."
         )
-        best = None
 
     if continuation_chain:
         numbered = [n for n in continuation_chain if n.inferred_part is not None]

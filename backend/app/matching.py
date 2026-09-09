@@ -109,6 +109,27 @@ def credible_continuation(
     return numbered_follow_up or explicitly_named_follow_up or content_verified_follow_up
 
 
+def consecutive_numbered_continuation(
+    *,
+    source_title: str,
+    source_creator: str | None,
+    candidate: "Candidate",
+) -> bool:
+    """Recognize an explicit next part while retaining story and creator anchors."""
+    source_part = _part_number(source_title)
+    candidate_part = _part_number(candidate.title)
+    if source_part is None or candidate_part != source_part + 1:
+        return False
+
+    source_terms = tokens(source_title) - tokens(source_creator or "") - GENERIC_TITLE_TERMS
+    candidate_terms = tokens(candidate.title) - tokens(candidate.creator or "") - GENERIC_TITLE_TERMS
+    if not (source_terms & candidate_terms):
+        return False
+
+    creator_match = float((candidate.evidence or {}).get("creator_match", 0.0) or 0.0)
+    return creator_match >= 0.8
+
+
 def creator_similarity(source_creator: str | None, candidate_creator: str | None) -> float:
     if not source_creator or not candidate_creator:
         return 0.0
