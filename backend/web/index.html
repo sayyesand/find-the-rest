@@ -10,7 +10,7 @@
   <meta name="description" content="Find a continuation, full original, source, or copy of a public video.">
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="icon" href="/assets/icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="/assets/styles.css">
+  <link rel="stylesheet" href="/assets/styles.css?v=social-search-2">
   <title>Find the Rest</title>
 </head>
 <body>
@@ -67,6 +67,10 @@
         <a id="match-link" class="open-link" target="_blank" rel="noopener noreferrer">Open match <span>↗</span></a>
       </article>
       <div id="other-matches" class="other-matches"></div>
+      <div id="social-search-fallback" class="social-search-fallback" hidden>
+        <p>The matching part may only be indexed on the original social network.</p>
+        <a id="social-search-link" class="social-search-link" target="_blank" rel="noopener noreferrer">Search public social results <span>↗</span></a>
+      </div>
       <button id="new-search" class="secondary" type="button">Start another search</button>
     </section>
 
@@ -85,6 +89,6 @@
       <span>Uploads are temporary</span>
     </footer>
   </main>
-  <script src="/assets/app.js" defer></script>
+  <script src="/assets/app.js?v=social-search-2" defer></script>
 </body>
 </html>

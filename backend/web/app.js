@@ -8,8 +8,12 @@ const ui = {
   confidenceRow: $("confidence-row"), confidenceNumber: $("confidence-number"),
   confidenceFill: $("confidence-fill"), best: $("best-match"), matchTitle: $("match-title"),
   matchDetail: $("match-detail"), matchLink: $("match-link"), others: $("other-matches"),
+  socialFallback: $("social-search-fallback"), socialSearchLink: $("social-search-link"),
   again: $("new-search"), dot: $("status-dot"), status: $("server-status")
 };
+
+let lastSocialPlatform = null;
+let lastSocialClue = "";
 
 const intentNames = {
   continue_story: "Continuation search",
@@ -31,6 +35,26 @@ function needsSocialClue(url) {
     const host = new URL(url).hostname.toLowerCase();
     return host.includes("instagram.com") || host.includes("facebook.com") || host === "fb.watch";
   } catch { return false; }
+}
+
+function socialPlatform(url) {
+  try {
+    const host = new URL(url).hostname.toLowerCase();
+    if (host.includes("facebook.com") || host === "fb.watch") return "facebook";
+    if (host.includes("instagram.com")) return "instagram";
+  } catch { /* invalid or incomplete URL */ }
+  return null;
+}
+
+function nextPartPhrase(clue) {
+  const match = clue.match(/\b(?:part|pt)\.?\s*(\d+)\b/i);
+  return match ? `part ${Number(match[1]) + 1}` : "part 2 full video";
+}
+
+function publicSocialSearchURL(platform, clue) {
+  const domain = platform === "instagram" ? "instagram.com" : "facebook.com";
+  const query = `site:${domain} ${clue} ${nextPartPhrase(clue)}`;
+  return `https://www.google.com/search?q=${encodeURIComponent(query)}`;
 }
 
 function updateClueVisibility() {
@@ -91,6 +115,13 @@ function showResult(data) {
   requestAnimationFrame(() => { ui.confidenceFill.style.width = `${Math.round(confidence * 100)}%`; });
 
   ui.best.hidden = !data.best_match;
+  const showSocialFallback = !data.best_match && Boolean(lastSocialPlatform) && Boolean(lastSocialClue);
+  ui.socialFallback.hidden = !showSocialFallback;
+  if (showSocialFallback) {
+    const platformName = lastSocialPlatform === "instagram" ? "Instagram" : "Facebook";
+    ui.socialSearchLink.href = publicSocialSearchURL(lastSocialPlatform, lastSocialClue);
+    ui.socialSearchLink.firstChild.textContent = `Search public ${platformName} results `;
+  }
   ui.others.replaceChildren();
   if (data.best_match) {
     const best = data.best_match;
@@ -109,6 +140,7 @@ function showError(message) {
   ui.resultMessage.textContent = message;
   ui.confidenceRow.hidden = true;
   ui.best.hidden = true;
+  ui.socialFallback.hidden = true;
   ui.others.replaceChildren();
   ui.result.hidden = false;
   ui.result.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -130,6 +162,8 @@ async function search() {
     return;
   }
   setBusy(true);
+  lastSocialPlatform = socialPlatform(url);
+  lastSocialClue = social ? clue : "";
   ui.result.hidden = true;
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 120000);
@@ -174,6 +208,9 @@ ui.again.addEventListener("click", () => {
   ui.result.hidden = true;
   ui.url.value = "";
   ui.clue.value = "";
+  ui.socialFallback.hidden = true;
+  lastSocialPlatform = null;
+  lastSocialClue = "";
   updateClueVisibility();
   ui.url.focus();
   window.scrollTo({ top: 0, behavior: "smooth" });
