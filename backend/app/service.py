@@ -223,15 +223,22 @@ async def analyze(req: AnalyzeRequest, *, source_transcript: str | None = None, 
         notes.append("Direct creator-gallery search remains provider/API dependent; restricted or private content is never bypassed.")
 
     fingerprint_description = " ".join(x for x in [source_description, source_visible_text or ""] if x).strip()
-    source_identity_text = source_title or source_visible_text or source_description
+    # On social share pages, generic login/page metadata (for example,
+    # "Log into Facebook") must not override the user's specific caption clue.
+    source_identity_text = source_visible_text or source_title or source_description
 
     # Facebook and Instagram commonly expose little or no public page metadata.
     # A user-supplied caption/clue can still seed a public YouTube search without
     # logging in, scraping private content, or requiring another paid provider.
     if platform != "youtube" and os.getenv("YOUTUBE_API_KEY", "").strip():
-        clue_text = " ".join(
-            x for x in [source_title, source_description, source_visible_text or "", source_transcript or ""] if x
-        ).strip()
+        if source_visible_text:
+            clue_text = " ".join(
+                x for x in [source_visible_text, source_transcript or ""] if x
+            ).strip()
+        else:
+            clue_text = " ".join(
+                x for x in [source_title, source_description, source_transcript or ""] if x
+            ).strip()
         query = normalize_terms(source_identity_text, clue_text)
         if query:
             candidates.extend(await search_candidates(
