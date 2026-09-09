@@ -17,6 +17,11 @@ CONTINUATION_PHRASES = (
     "what happened next", "update", "follow up", "follow-up",
 )
 
+GENERIC_TITLE_TERMS = {
+    "remaster", "remastered", "music", "song", "audio", "lyrics", "lyric",
+    "version", "original", "official", "video", "clip", "episode", "full",
+}
+
 
 def clean_text(text: str) -> str:
     text = html.unescape(text or "").lower()
@@ -50,6 +55,58 @@ def continuation_signal(title: str, description: str) -> float:
     if any(p in raw for p in CONTINUATION_PHRASES):
         return 0.72
     return 0.0
+
+
+def _part_number(text: str) -> int | None:
+    match = PART_RE.search(text or "")
+    if not match:
+        return None
+    value = match.group(1).lower()
+    return {"ii": 2, "iii": 3, "iv": 4}.get(value, int(value) if value.isdigit() else None)
+
+
+def credible_continuation(
+    *,
+    source_title: str,
+    source_creator: str | None,
+    candidate: "Candidate",
+) -> bool:
+    """Require story identity as well as generic continuation metadata.
+
+    Same-creator and later-publication signals are useful ranking clues, but they
+    cannot turn another unrelated upload by that creator into a continuation.
+    """
+    source_terms = tokens(source_title) - tokens(source_creator or "") - GENERIC_TITLE_TERMS
+    candidate_terms = tokens(candidate.title) - tokens(candidate.creator or "") - GENERIC_TITLE_TERMS
+    shared_topic_terms = source_terms & candidate_terms
+
+    source_part = _part_number(source_title)
+    candidate_part = _part_number(candidate.title)
+    numbered_follow_up = (
+        candidate_part is not None
+        and (source_part is None or candidate_part > source_part)
+        and bool(shared_topic_terms)
+    )
+
+    title_continuation = continuation_signal(candidate.title, "")
+    explicitly_named_follow_up = title_continuation >= 0.7 and bool(shared_topic_terms)
+
+    evidence = candidate.evidence or {}
+    direct_identity = max(
+        float(evidence.get("reverse_image_match", 0.0) or 0.0),
+        float(evidence.get("robust_visual", 0.0) or 0.0),
+        float(evidence.get("visual_continuity", 0.0) or 0.0),
+        float(evidence.get("audio_fingerprint", 0.0) or 0.0),
+        float(evidence.get("audio_continuity", 0.0) or 0.0),
+        float(evidence.get("transcript_semantic", 0.0) or 0.0),
+        float(evidence.get("scene_semantic", 0.0) or 0.0),
+    )
+    content_verified_follow_up = direct_identity >= 0.6 and (
+        title_continuation >= 0.55
+        or float(evidence.get("ending_continuity", 0.0) or 0.0) >= 0.55
+    )
+
+    return numbered_follow_up or explicitly_named_follow_up or content_verified_follow_up
 
 
 def creator_similarity(source_creator: str | None, candidate_creator: str | None) -> float:

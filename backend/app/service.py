@@ -16,6 +16,7 @@ from .outcome import classify_outcome
 from .provenance import build_provenance_graph
 from .intent import rank_for_intent
 from .confidence import annotate_confidence, confidence_profile
+from .matching import credible_continuation
 from .adapters.youtube import extract_video_id, get_video_metadata, normalize_terms, search_candidates, iso8601_duration_seconds
 from .adapters.open_web import search_open_web
 
@@ -325,6 +326,19 @@ async def analyze(req: AnalyzeRequest, *, source_transcript: str | None = None, 
 
     top_profile = confidence_profile(candidates[0]) if candidates else None
     best = candidates[0] if candidates and top_profile and top_profile.calibrated >= MIN_MATCH_CONFIDENCE else None
+    if (
+        best is not None
+        and req.intent == "continue_story"
+        and not credible_continuation(
+            source_title=source_title,
+            source_creator=source_creator,
+            candidate=best,
+        )
+    ):
+        notes.append(
+            "The top result was related, but rejected as a continuation because it lacked shared story identity."
+        )
+        best = None
 
     if continuation_chain:
         numbered = [n for n in continuation_chain if n.inferred_part is not None]
